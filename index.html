@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#3d5a2e">
+<title>Elmidor Gestión | Panel avícola</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Elmidor">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ════════ PANTALLA DE CONFIGURACIÓN (se muestra si falta conectar Sheets) ════════ -->
+<div id="setup-screen" class="setup-wrap" style="display:none">
+  <div class="setup-card">
+    <div class="setup-icon"><i class="ti ti-plug-connected"></i></div>
+    <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:.4rem">Conecta tu Google Sheet</h2>
+    <p style="font-size:.85rem;color:var(--text-light);line-height:1.6">
+      Esta app guarda todos tus datos en una Google Sheet propia. Sigue estos pasos una sola vez para conectarla.
+    </p>
+    <div class="setup-steps">
+      <div class="setup-step"><span class="step-num">1</span><div><strong style="font-size:.85rem">Crea el Google Sheet</strong><p style="font-size:.78rem;color:var(--text-light);margin-top:2px">Con las 5 hojas: Produccion, Stock, Gastos, Ventas, Resumen. Ver guía incluida.</p></div></div>
+      <div class="setup-step"><span class="step-num">2</span><div><strong style="font-size:.85rem">Instala el conector</strong><p style="font-size:.78rem;color:var(--text-light);margin-top:2px">Extensiones → Apps Script → pega el archivo AppsScript.gs → Implementar</p></div></div>
+      <div class="setup-step"><span class="step-num">3</span><div><strong style="font-size:.85rem">Pega la URL aquí abajo</strong><p style="font-size:.78rem;color:var(--text-light);margin-top:2px">La URL que te entrega Apps Script al implementar como app web</p></div></div>
+    </div>
+    <div class="field">
+      <label>URL del Apps Script</label>
+      <input type="text" id="setup-url" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="UI.guardarUrl()"><i class="ti ti-check"></i> Conectar y empezar</button>
+    <p style="font-size:.72rem;color:var(--text-light);text-align:center;margin-top:1rem">
+      ¿No la tienes lista? Abre <strong>GUIA-INSTALACION.md</strong> incluida en la carpeta del proyecto.
+    </p>
+  </div>
+</div>
+
+<!-- ════════ APP PRINCIPAL ════════ -->
+<div id="app-root" style="display:none">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo"><i class="ti ti-feather"></i></div>
+      <div>
+        <p class="topbar-title">Elmidor Gestión</p>
+        <p class="topbar-sub" id="topbar-fecha">—</p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <span class="conn-badge conn-ok" id="conn-badge"><span class="conn-dot"></span><span id="conn-text">Conectado</span></span>
+      <button class="icon-btn" onclick="UI.refrescarTodo()" title="Actualizar"><i class="ti ti-refresh"></i></button>
+      <button class="icon-btn" onclick="UI.abrirAjustes()" title="Ajustes"><i class="ti ti-settings"></i></button>
+    </div>
+  </div>
+
+  <div class="app-wrap">
+
+    <!-- NAV ESCRITORIO -->
+    <div class="desk-nav">
+      <button class="desk-tab on" data-view="dashboard" onclick="UI.irVista('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+      <button class="desk-tab" data-view="produccion" onclick="UI.irVista('produccion')"><i class="ti ti-egg"></i> Producción</button>
+      <button class="desk-tab" data-view="stock" onclick="UI.irVista('stock')"><i class="ti ti-package"></i> Stock</button>
+      <button class="desk-tab" data-view="gastos" onclick="UI.irVista('gastos')"><i class="ti ti-receipt-2"></i> Gastos</button>
+      <button class="desk-tab" data-view="ventas" onclick="UI.irVista('ventas')"><i class="ti ti-shopping-cart"></i> Ventas</button>
+    </div>
+
+    <div id="sync-banner-wrap"></div>
+
+    <!-- ═══ VISTA: DASHBOARD ═══ -->
+    <section class="view on" id="view-dashboard">
+      <div class="view-head">
+        <div>
+          <p class="view-title">Resumen general</p>
+          <p class="view-sub">Indicadores del mes en curso</p>
+        </div>
+      </div>
+
+      <div class="metrics-grid" id="dash-metrics">
+        <!-- generado por JS -->
+      </div>
+
+      <div class="card">
+        <p class="card-title"><i class="ti ti-chart-bar"></i> Producción últimos 7 días</p>
+        <div class="bars" id="dash-chart"></div>
+      </div>
+
+      <div class="card">
+        <p class="card-title"><i class="ti ti-chart-pie"></i> Gastos del mes por categoría</p>
+        <div id="dash-gastos-cat"></div>
+      </div>
+
+      <div class="card">
+        <p class="card-title"><i class="ti ti-clock"></i> Últimos movimientos</p>
+        <div id="dash-ultimos"></div>
+      </div>
+    </section>
+
+    <!-- ═══ VISTA: PRODUCCIÓN ═══ -->
+    <section class="view" id="view-produccion">
+      <div class="view-head">
+        <div>
+          <p class="view-title">Producción</p>
+          <p class="view-sub">Registro diario de huevos producidos</p>
+        </div>
+        <button class="btn btn-primary" onclick="UI.abrirModal('produccion')"><i class="ti ti-plus"></i> Registrar producción</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Fecha</th><th>Cantidad</th><th>Talla</th><th>Quebrados</th><th>% Quiebre</th><th>Obs.</th><th></th></tr></thead>
+          <tbody id="tabla-produccion"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ VISTA: STOCK ═══ -->
+    <section class="view" id="view-stock">
+      <div class="view-head">
+        <div>
+          <p class="view-title">Stock</p>
+          <p class="view-sub">Entradas y salidas de inventario</p>
+        </div>
+        <button class="btn btn-primary" onclick="UI.abrirModal('stock')"><i class="ti ti-plus"></i> Registrar movimiento</button>
+      </div>
+      <div class="metrics-grid" style="grid-template-columns:repeat(2,1fr)" id="stock-resumen"></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Fecha</th><th>Formato</th><th>Cantidad</th><th>Movimiento</th><th>Motivo</th><th></th></tr></thead>
+          <tbody id="tabla-stock"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ VISTA: GASTOS ═══ -->
+    <section class="view" id="view-gastos">
+      <div class="view-head">
+        <div>
+          <p class="view-title">Gastos</p>
+          <p class="view-sub">Alimento, logística y operación</p>
+        </div>
+        <button class="btn btn-primary" onclick="UI.abrirModal('gastos')"><i class="ti ti-plus"></i> Registrar gasto</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th></th></tr></thead>
+          <tbody id="tabla-gastos"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ VISTA: VENTAS ═══ -->
+    <section class="view" id="view-ventas">
+      <div class="view-head">
+        <div>
+          <p class="view-title">Ventas</p>
+          <p class="view-sub">Pedidos despachados y por cobrar</p>
+        </div>
+        <button class="btn btn-primary" onclick="UI.abrirModal('ventas')"><i class="ti ti-plus"></i> Registrar venta</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Fecha</th><th>Cliente</th><th>Formato</th><th>Cant.</th><th>Total</th><th>Pago</th><th></th></tr></thead>
+          <tbody id="tabla-ventas"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- NAV MÓVIL INFERIOR -->
+<div class="mob-nav" id="mob-nav" style="display:none">
+  <button class="mob-tab on" data-view="dashboard" onclick="UI.irVista('dashboard')"><i class="ti ti-layout-dashboard"></i>Inicio</button>
+  <button class="mob-tab" data-view="produccion" onclick="UI.irVista('produccion')"><i class="ti ti-egg"></i>Producción</button>
+  <button class="mob-tab" data-view="stock" onclick="UI.irVista('stock')"><i class="ti ti-package"></i>Stock</button>
+  <button class="mob-tab" data-view="gastos" onclick="UI.irVista('gastos')"><i class="ti ti-receipt-2"></i>Gastos</button>
+  <button class="mob-tab" data-view="ventas" onclick="UI.irVista('ventas')"><i class="ti ti-shopping-cart"></i>Ventas</button>
+</div>
+
+<!-- ════════ MODAL: PRODUCCIÓN ════════ -->
+<div class="modal-bg" id="modal-produccion">
+  <div class="modal-box">
+    <div class="modal-head">
+      <p class="modal-title">Registrar producción</p>
+      <button class="modal-x" onclick="UI.cerrarModal('modal-produccion')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Fecha</label><input type="date" id="prod-fecha"></div>
+      <div class="form-grid">
+        <div class="field"><label>Cantidad producida</label><input type="number" id="prod-cantidad" placeholder="0" min="0"></div>
+        <div class="field"><label>Talla predominante</label>
+          <select id="prod-talla"></select>
+        </div>
+      </div>
+      <div class="field"><label>Huevos quebrados</label><input type="number" id="prod-quebrados" placeholder="0" min="0" value="0"></div>
+      <div class="field"><label>Observación (opcional)</label><input type="text" id="prod-obs" placeholder="Ej: clima lluvioso"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="UI.cerrarModal('modal-produccion')">Cancelar</button>
+      <button class="btn btn-primary btn-block" id="btn-guardar-produccion" onclick="UI.guardarProduccion()"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODAL: STOCK ════════ -->
+<div class="modal-bg" id="modal-stock">
+  <div class="modal-box">
+    <div class="modal-head">
+      <p class="modal-title">Registrar movimiento de stock</p>
+      <button class="modal-x" onclick="UI.cerrarModal('modal-stock')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Fecha</label><input type="date" id="stock-fecha"></div>
+      <div class="field"><label>Tipo de movimiento</label>
+        <select id="stock-tipo" onchange="UI.actualizarMotivosStock()">
+          <option value="entrada">Entrada (suma stock)</option>
+          <option value="salida">Salida (resta stock)</option>
+        </select>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Formato</label><select id="stock-formato"></select></div>
+        <div class="field"><label>Cantidad (huevos)</label><input type="number" id="stock-cantidad" placeholder="0" min="0"></div>
+      </div>
+      <div class="field"><label>Motivo</label><select id="stock-motivo"></select></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="UI.cerrarModal('modal-stock')">Cancelar</button>
+      <button class="btn btn-primary btn-block" id="btn-guardar-stock" onclick="UI.guardarStock()"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODAL: GASTOS ════════ -->
+<div class="modal-bg" id="modal-gastos">
+  <div class="modal-box">
+    <div class="modal-head">
+      <p class="modal-title">Registrar gasto</p>
+      <button class="modal-x" onclick="UI.cerrarModal('modal-gastos')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Fecha</label><input type="date" id="gasto-fecha"></div>
+      <div class="field"><label>Categoría</label><select id="gasto-categoria"></select></div>
+      <div class="field"><label>Descripción</label><input type="text" id="gasto-desc" placeholder="Ej: 5 sacos de concentrado"></div>
+      <div class="field"><label>Monto (CLP)</label><input type="number" id="gasto-monto" placeholder="0" min="0"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="UI.cerrarModal('modal-gastos')">Cancelar</button>
+      <button class="btn btn-primary btn-block" id="btn-guardar-gastos" onclick="UI.guardarGasto()"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODAL: VENTAS ════════ -->
+<div class="modal-bg" id="modal-ventas">
+  <div class="modal-box">
+    <div class="modal-head">
+      <p class="modal-title">Registrar venta</p>
+      <button class="modal-x" onclick="UI.cerrarModal('modal-ventas')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Fecha</label><input type="date" id="venta-fecha"></div>
+      <div class="field"><label>Cliente</label><input type="text" id="venta-cliente" placeholder="Nombre del cliente o negocio"></div>
+      <div class="form-grid">
+        <div class="field"><label>Formato</label><select id="venta-formato" onchange="UI.calcularSugerenciaVenta()"></select></div>
+        <div class="field"><label>Talla</label><select id="venta-talla"></select></div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Cantidad de unidades</label><input type="number" id="venta-cantidad" placeholder="1" min="1" value="1" oninput="UI.calcularSugerenciaVenta()"></div>
+        <div class="field"><label>Monto total (CLP)</label><input type="number" id="venta-monto" placeholder="0" min="0"></div>
+      </div>
+      <div class="field"><label>Método de pago</label><select id="venta-pago"></select></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="UI.cerrarModal('modal-ventas')">Cancelar</button>
+      <button class="btn btn-primary btn-block" id="btn-guardar-ventas" onclick="UI.guardarVenta()"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODAL: AJUSTES ════════ -->
+<div class="modal-bg" id="modal-ajustes">
+  <div class="modal-box">
+    <div class="modal-head">
+      <p class="modal-title">Ajustes</p>
+      <button class="modal-x" onclick="UI.cerrarModal('modal-ajustes')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>URL del Apps Script</label><input type="text" id="ajustes-url" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <p class="field-help">Cambiar esto reconecta la app a otra Google Sheet.</p>
+      <div class="mt-1" style="border-top:1px solid var(--border);padding-top:1rem">
+        <p style="font-size:.78rem;color:var(--text-light)">Pendientes por sincronizar: <strong id="ajustes-pendientes">0</strong></p>
+        <button class="btn btn-outline btn-sm mt-1" onclick="UI.forzarSync()"><i class="ti ti-refresh"></i> Sincronizar ahora</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary btn-block" onclick="UI.guardarAjustes()"><i class="ti ti-check"></i> Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js");
+    });
+  }
+</script>
+</body>
+</html>
