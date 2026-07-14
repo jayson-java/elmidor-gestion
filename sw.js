@@ -6,7 +6,7 @@
    Los datos siguen viajando al Apps Script vía fetch normal.
    ════════════════════════════════════════════════════════ */
 
-const CACHE = "elmidor-shell-v1";
+const CACHE = "elmidor-shell-v2";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -24,6 +24,7 @@ const ARCHIVOS = [
 self.addEventListener("install", function(e){
   e.waitUntil(
     caches.open(CACHE).then(function(cache){ return cache.addAll(ARCHIVOS); })
+      .then(function(){ return self.skipWaiting(); })
   );
 });
 
@@ -31,7 +32,7 @@ self.addEventListener("activate", function(e){
   e.waitUntil(
     caches.keys().then(function(keys){
       return Promise.all(keys.filter(function(k){ return k !== CACHE; }).map(function(k){ return caches.delete(k); }));
-    })
+    }).then(function(){ return self.clients.claim(); })
   );
 });
 
