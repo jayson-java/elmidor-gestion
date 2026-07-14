@@ -12,6 +12,15 @@ const CFG = {
      Se ve así: https://script.google.com/macros/s/AKfycb.../exec */
   apiUrl: "",
 
+  /* ── USUARIOS Y ROLES ──
+     Cambiá los PIN cuando quieras. No compartir estos datos.
+     rol "admin"      → acceso completo
+     rol "produccion" → solo ver y registrar producción diaria */
+  usuarios: [
+    { nombre: "Admin",      pin: "1234", rol: "admin" },
+    { nombre: "Producción", pin: "5678", rol: "produccion" }
+  ],
+
   /* ── NEGOCIO ── */
   nombreNegocio: "Elmidor",
 

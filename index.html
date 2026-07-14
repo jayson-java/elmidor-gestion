@@ -41,6 +41,25 @@
   </div>
 </div>
 
+<!-- ════════ PANTALLA DE LOGIN ════════ -->
+<div id="login-screen" class="setup-wrap" style="display:none">
+  <div class="setup-card">
+    <div class="setup-icon"><i class="ti ti-lock"></i></div>
+    <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:.4rem">Iniciar sesión</h2>
+    <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem">Seleccioná tu usuario e ingresá tu PIN.</p>
+    <div class="field">
+      <label>Usuario</label>
+      <select id="login-usuario"></select>
+    </div>
+    <div class="field">
+      <label>PIN</label>
+      <input type="password" id="login-pin" placeholder="••••" maxlength="8" inputmode="numeric"
+             onkeydown="if(event.key==='Enter') UI.hacerLogin()">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="UI.hacerLogin()"><i class="ti ti-login"></i> Entrar</button>
+  </div>
+</div>
+
 <!-- ════════ APP PRINCIPAL ════════ -->
 <div id="app-root" style="display:none">
 
@@ -56,7 +75,8 @@
     <div class="flex gap-2">
       <span class="conn-badge conn-ok" id="conn-badge"><span class="conn-dot"></span><span id="conn-text">Conectado</span></span>
       <button class="icon-btn" onclick="UI.refrescarTodo()" title="Actualizar"><i class="ti ti-refresh"></i></button>
-      <button class="icon-btn" onclick="UI.abrirAjustes()" title="Ajustes"><i class="ti ti-settings"></i></button>
+      <button class="icon-btn" id="btn-ajustes" onclick="UI.abrirAjustes()" title="Ajustes"><i class="ti ti-settings"></i></button>
+      <button class="icon-btn" onclick="UI.cerrarSesion()" title="Cerrar sesión"><i class="ti ti-logout"></i></button>
     </div>
   </div>
 

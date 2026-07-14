@@ -7,6 +7,7 @@ const UI = (function(){
   var vistaActual = "dashboard";
   var datos = { Produccion:[], Stock:[], Gastos:[], Ventas:[] };
   var resumen = null;
+  var rolActual = null;
 
   function init(){
     var urlGuardada = localStorage.getItem("elmidor_api_url");
@@ -16,7 +17,61 @@ const UI = (function(){
       document.getElementById("setup-screen").style.display = "block";
       return;
     }
+
+    var rolGuardado = sessionStorage.getItem("elmidor_rol");
+    if(rolGuardado){
+      rolActual = rolGuardado;
+      mostrarApp();
+    } else {
+      mostrarLogin();
+    }
+  }
+
+  function mostrarLogin(){
+    var sel = document.getElementById("login-usuario");
+    sel.innerHTML = CFG.usuarios.map(function(u){
+      return '<option value="'+u.rol+'">'+u.nombre+'</option>';
+    }).join('');
+    document.getElementById("login-pin").value = "";
+    document.getElementById("login-screen").style.display = "block";
+    setTimeout(function(){ document.getElementById("login-pin").focus(); }, 100);
+  }
+
+  function hacerLogin(){
+    var rolSel = document.getElementById("login-usuario").value;
+    var pin    = document.getElementById("login-pin").value;
+    var usuario = CFG.usuarios.find(function(u){ return u.rol === rolSel; });
+    if(!usuario || usuario.pin !== pin){
+      toast("PIN incorrecto", true);
+      document.getElementById("login-pin").value = "";
+      return;
+    }
+    rolActual = usuario.rol;
+    sessionStorage.setItem("elmidor_rol",     rolActual);
+    sessionStorage.setItem("elmidor_usuario", usuario.nombre);
+    document.getElementById("login-screen").style.display = "none";
     mostrarApp();
+  }
+
+  function cerrarSesion(){
+    sessionStorage.removeItem("elmidor_rol");
+    sessionStorage.removeItem("elmidor_usuario");
+    rolActual = null;
+    document.getElementById("app-root").style.display  = "none";
+    document.getElementById("mob-nav").style.display   = "none";
+    mostrarLogin();
+  }
+
+  function aplicarRol(){
+    var esAdmin = rolActual === "admin";
+    var vistasSoloAdmin = ["dashboard","stock","gastos","ventas"];
+    vistasSoloAdmin.forEach(function(v){
+      document.querySelectorAll('[data-view="'+v+'"]').forEach(function(el){
+        el.style.display = esAdmin ? "" : "none";
+      });
+    });
+    document.getElementById("btn-ajustes").style.display = esAdmin ? "" : "none";
+    if(!esAdmin) irVista("produccion");
   }
 
   function mostrarApp(){
@@ -28,6 +83,7 @@ const UI = (function(){
     fecharHoyEnFormularios();
     actualizarFechaTopbar();
     actualizarBadgeConexion();
+    aplicarRol();
 
     SYNC.onCambioEstado(function(estado){
       actualizarBadgeConexion();
@@ -45,8 +101,9 @@ const UI = (function(){
     }
     localStorage.setItem("elmidor_api_url", url);
     CFG.apiUrl = url;
-    mostrarApp();
-    toast("¡Conectado! Cargando tus datos...");
+    document.getElementById("setup-screen").style.display = "none";
+    mostrarLogin();
+    toast("¡Conectado!");
   }
 
   function abrirAjustes(){
@@ -515,6 +572,8 @@ const UI = (function(){
 
   return {
     init: init,
+    hacerLogin: hacerLogin,
+    cerrarSesion: cerrarSesion,
     guardarUrl: guardarUrl,
     abrirAjustes: abrirAjustes,
     guardarAjustes: guardarAjustes,
